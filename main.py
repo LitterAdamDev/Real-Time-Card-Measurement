@@ -24,8 +24,8 @@ def getContours(img, thresholds=[100, 100], min_area=2000):
     img_canny = cv2.Canny(img_blur, thresholds[0], thresholds[1])
     img_dilated = cv2.dilate(img_canny, np.ones((5, 5)), iterations=3)
     img_eroded = cv2.erode(img_dilated, np.ones((5, 5)), iterations=2)
-    if thresholds[1] == 100:
-        cv2.imshow('eroded',img_eroded)
+    #if thresholds[1] == 100:
+    #    cv2.imshow('eroded',img_eroded)
     all_contours, ret = cv2.findContours(img_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for contour in all_contours:
@@ -39,7 +39,7 @@ def getContours(img, thresholds=[100, 100], min_area=2000):
     contours = sorted(contours, key=lambda x: x[1], reverse=True)
     return img, contours
 
-def reorderPoints(myPoints):
+def reorderPoints(myPoints, itsPaper=False):
     myPointsNew = np.zeros_like(myPoints)
     myPoints = myPoints.reshape((4, 2))
     add = myPoints.sum(1)
@@ -48,10 +48,19 @@ def reorderPoints(myPoints):
     diff = np.diff(myPoints, axis=1)
     myPointsNew[1] = myPoints[np.argmin(diff)]
     myPointsNew[2] = myPoints[np.argmax(diff)]
+    if itsPaper:
+        if (myPointsNew[1][0][0]-myPointsNew[0][0][0]) > (myPointsNew[2][0][1]-myPointsNew[0][0][1]):
+            myPointsReversed = np.zeros_like(myPointsNew)
+            myPointsReversed[1] = myPointsNew[0]
+            myPointsReversed[2] = myPointsNew[3]
+            myPointsReversed[3] = myPointsNew[1]
+            myPointsReversed[0] = myPointsNew[2]
+            return myPointsReversed
+
     return myPointsNew
 
 def warpImg (img,points,w,h,padding=60):
-    points =reorderPoints(points)
+    points = reorderPoints(points,True)
     pts1 = np.float32(points)
     pts2 = np.float32([[0, 0], [w, 0], [0, h], [w, h]])
     matrix = cv2.getPerspectiveTransform(pts1, pts2)
