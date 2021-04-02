@@ -1,31 +1,34 @@
 from cv2 import cv2
 import numpy as np
 
-capture = cv2.VideoCapture(1)
+capture = cv2.VideoCapture(0)
 capture.set(10, 160)
 capture.set(3, 1920)
 capture.set(4, 1080)
 scale = 3
 scaledWidth = 210 * scale
 scaledHeight = 297 * scale
-wanted_values = [5,5]
-tolerances = [0.0,0.3]
+wanted_values = [7.5,3.8]
+tolerances = [0.6, 0.3]
 hit = True
 
-def getContours(img, thresholds=[100, 100], min_area=2000):
-
+def getContours(img, thresholds=[100, 100], min_area=100, target="papper"):
     contours = []
-    #blurred_img = cv2.blur(img,ksize=(5,5))
-    #med_val = np.median(blurred_img) 
-    #lower = int(max(0 ,0.7*med_val))
-    #upper = int(min(255,1.3*med_val))
-    image_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_blur = cv2.GaussianBlur(image_gray, (5, 5), 1)
+    if target == "papper":
+        low_value = np.array([0, 0, 168])
+        high_value = np.array([172, 111, 255])
+        img_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(img_HSV, low_value, high_value)
+        img_masked = cv2.bitwise_and(img, img, mask=mask)
+        img_bgr = cv2.cvtColor(img_masked, cv2.COLOR_HSV2BGR)
+        img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    else:
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    img_blur = cv2.GaussianBlur(img_gray, (5, 5), 1)
     img_canny = cv2.Canny(img_blur, thresholds[0], thresholds[1])
     img_dilated = cv2.dilate(img_canny, np.ones((5, 5)), iterations=3)
     img_eroded = cv2.erode(img_dilated, np.ones((5, 5)), iterations=2)
-    #if thresholds[1] == 100:
-    #    cv2.imshow('eroded',img_eroded)
     all_contours, ret = cv2.findContours(img_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for contour in all_contours:
@@ -77,11 +80,11 @@ while True:
     if len(conts) != 0:
         biggest = conts[0][2]
         img_wrapped = warpImg(image, biggest, scaledWidth,scaledHeight)
-        imgContours2, conts2 = getContours(img_wrapped, thresholds=[50,50])
+        imgContours2, conts2 = getContours(img_wrapped, thresholds=[50,50], target="card")
         if len(conts) != 0:
             for contour in conts2:
                 nPoints = reorderPoints(contour[2])
-
+                print('npoints:',nPoints)
                 nW = round((findDis(nPoints[0][0]//scale, nPoints[1][0]//scale)/10), 1)
                 nH = round((findDis(nPoints[0][0]//scale, nPoints[2][0]//scale)/10), 1)
                 current_color_w = (0, 255, 0)
